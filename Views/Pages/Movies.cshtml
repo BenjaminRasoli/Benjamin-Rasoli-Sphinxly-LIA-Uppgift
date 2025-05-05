@@ -1,0 +1,26 @@
+@model StarWarsResponse
+
+<div class="movie-intro">
+    <h2 class="size-md m-t-z m-b-2" ew-for="introduction"></h2>
+    <h2 ew-for="body"></h2>
+</div>
+
+@if (Model.Results != null && Model.Results.Any())
+{
+<div class="movies-container">
+    @foreach (var movie in Model.Results)
+        {
+    var id = movie.url?.Split("/", StringSplitOptions.RemoveEmptyEntries).Last();
+    <div class="movie-card">
+        <h2>@movie.Title</h2>
+        <p><strong>Director:</strong> @movie.Director</p>
+        <p><strong>Release:</strong> @movie.release_date</p>
+        <a href="/movie/@id">View Details</a>
+    </div>
+        }
+</div>
+}
+else
+{
+<p>No movies found.</p>
+}

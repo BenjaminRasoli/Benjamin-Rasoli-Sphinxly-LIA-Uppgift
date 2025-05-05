@@ -1,0 +1,16 @@
+@model StarWarsEntity
+
+@if (Model != null)
+{
+<div class="movie-container">
+    <h1>@Model.Title</h1>
+    <p><strong>Director:</strong> @Model.Director</p>
+    <p><strong>Release Date:</strong> @Model.release_date</p>
+    <p><strong>Opening Crawl:</strong></p>
+    <p>@Model.Opening_crawl</p>
+</div>
+}
+else
+{
+<p>Movie data not available.</p>
+}
