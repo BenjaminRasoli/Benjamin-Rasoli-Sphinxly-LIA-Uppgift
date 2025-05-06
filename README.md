@@ -1,54 +1,121 @@
-# Easyweb.site plain example template
+## 🛠️ **Kontroller - Förklaring**
 
-Simple and plain .NET 8 starting template for creating content using Easyweb CMS and ew-tag-pack.
+Projektet innehåller en controller, `CustomDataController`, som hanterar API-anrop och rendering av data för Star Wars-filmer. Den är uppdelad i tre huvudsakliga actions:
 
-1. If you haven't created an Easyweb account yet, sign up at https://app.easyweb.se/account/createaccount
+### 1. **`Movies()` - Visa en lista med alla filmer**
 
-2. If you haven't created a site to fetch content from yet, once signed in, create a new site @ My account -> My sites -> New site (plus sign)
+* **Syfte**: Hämtar alla filmer från Star Wars API och visar dem i en lista.
+* **Vad den gör**:
 
-3. Once you have an account and a site, enable your API-key by clicking the cloud in the top bar and creating a new API-key. Copy the OAuth2 API-credentals to appSettings.json -> ApiSettings where the values are marked with x's. Replace DataOptions/UnionId/"xxxx" with your 4 digit union-/site id (seen in the end of your endpointRoot, ``/extapi/[here]``). 
+  * Gör ett HTTP GET-anrop till Star Wars API för att hämta en lista med filmer.
+  * Deserialiserar svaret till en `StarWarsResponse`-modell som innehåller alla filmer.
+  * Skickar listan med filmer till vyn `movies.cshtml` för att rendera filminformationen på sidan.
 
-4. Run the app to make sure your connection is up running and working
+**Kod:**
 
-5. Start building using the studio in Easyweb and the tag helpers provided by the Easyweb.site-packages, such as:
+```csharp
+[HttpGet("/movies")]
+public async Task<IActionResult> Movies()
+{
+    using var client = new HttpClient();
+    var response = await client.GetAsync("https://swapi.py4e.com/api/films/?format=json");
 
-``<ew-template for-key="[key]" />``
+    if (!response.IsSuccessStatusCode)
+    {
+        return NotFound("Could not fetch movie list.");
+    }
 
-``<div ew-list="[key]">More content...</div>``
+    var json = await response.Content.ReadAsStringAsync();
+    var movies = JsonConvert.DeserializeObject<StarWarsResponse>(json);
 
-``<span ew-for="[key]"></span>``
+    return View("~/Views/Pages/movies.cshtml", movies);
+}
+```
 
-6. Read and learn more at https://www.easyweb.site
+### 2. **`Movie(int id)` - Visa detaljer om en specifik film**
 
-## Quick start
-The Easyweb.site-framework is quite vast and has built in ways to handle most task required by a modern website. Below is a quick guide on how to build and print content from the Easyweb CMS to HTML.
+* **Syfte**: Hämtar detaljer om en enskild film baserat på filmens ID och visar informationen på en separat detaljsida.
+* **Vad den gör**:
 
-### View structure
-The view structure is read from the module-structure within Easyweb, and views will be searched for depending on the incoming route and set up modules, combined with some shared folders for shared content.
+  * Tar emot ett `id` från URL\:en (t.ex. `/movie/1`).
+  * Gör ett HTTP GET-anrop till API\:t för att hämta detaljerad information om en specifik film.
+  * Deserialiserar svaret till en `StarWarsEntity`-modell, som innehåller detaljer om filmen (t.ex. titel, regissör, öppningscrawl).
+  * Skickar den deserialiserade data till vyn `movie.cshtml` för att visa filmens detaljer på sidan.
 
-#### Examples of basic folder structure:
+**Kod:**
 
-Any view added to a module in Easyweb will be searched for using its key. For example, the standard view in a module "News" will be searched for in ``/Views/News/Index.cshtml`` as well as ``/Views/News/News.cshtml`` (Both are searched for as preferences differ.) A Module-view in a "Products"-module will be searched for in ``/Views/Products/Module.cshtml`` and a Folder view similarly with ``Folder.cshtml``.
+```csharp
+[HttpGet("/movie/{id}")]
+public async Task<IActionResult> Movie(int id)
+{
+    using var client = new HttpClient();
+    var response = await client.GetAsync($"https://swapi.py4e.com/api/films/{id}/?format=json");
 
-If not found, the search looks through ``/Views/Shared/[key].cshtml`` and finally ``/Views/[key].cshtml``. Having a root fallback view ``/Views/Index.cshtml`` is good practice as it would always be found as a last resort and print any default content written in it.
+    if (!response.IsSuccessStatusCode)
+    {
+        return RedirectToAction("Movies");
+    }
 
-Apart from ``Modules`` matching folders and ``Views`` matching ``[viewKey].cshtml``, added sections within a view, or any componenent/template added to it really, will be rendered using any ``[key].cshtml`` or ``_[key].cshtml`` matching it's key when rendereding using ``<ew-template />``.
+    var json = await response.Content.ReadAsStringAsync();
+    var movie = JsonConvert.DeserializeObject<StarWarsEntity>(json);
 
-### Printing content
-Once a view is resolved, the Easyweb.site has a variety of taghelpers to simplify fetching and printing content using the (custom) keys set to added templates/components in the Easyweb studio.
+    return View("~/Views/customData/movie.cshtml", movie);
+}
+```
 
-The most fundamental tags are:
+### 3. **Redirect till Filmlista**
 
-##### <ew-template />
-``<ew-template />``, or when used with key, ``<ew-template for-key="[key]" />`` will auto-render any sub-component beneath it, or if used with key, the subcomponent with the specified key.
-When rendering it will search for a view matching the key or fall back to printing default content.
+* **Syfte**: En fallback-route om användaren försöker besöka en ogiltig eller icke-existerande film.
+* **Vad den gör**:
 
-##### <ew-list />
-``<ew-list />``, or when used with key, ``<ew-list for-key="[key]" />``, or when used as an attribute on a HTML-element, ``<div ew-list="[myKey]"></div>`` will render the inner markup for each added content in Easyweb. Works both with components with a limit set to > 1 as well as custom feature lists like `ViewListComponent``.
+  * Om en användare försöker komma åt en film som inte finns (felaktigt ID), omdirigeras de automatiskt till listan av alla filmer (`/movies`).
 
-##### <ew-for />
-``<TAG ew-for="[key]" />``, is a the final "printing" tag, which will print the content matching the key given from easyweb into the tag where it applies. 
+**Kod:**
 
-###### Variants of ew-for for attributes
-Alternatives of ew-for is ofter used for image sources and anchor hrefs, where they are used like ```<img ew-for-src="[key]" />`` and ``<a ew-for-href="[key]" />``
-Above helping tags will not only set src and href, but any other default recommended content required, such as title, alt or any other attribute that applies to where it's used.
+```csharp
+[HttpGet("/movie")]
+public IActionResult RedirectToMovieList()
+{
+    return Redirect("/movies");
+}
+```
+
+## 🎬 **`movies.cshtml` - Förklaring**
+
+**Syfte**: Vyn `movies.cshtml` används för att visa en lista med alla Star Wars-filmer som hämtats från API\:t.
+
+### Vad den gör:
+
+* **Modell**: Vyn tar emot en `StarWarsResponse`-modell, som innehåller en lista (`Results`) med alla filmer.
+* **Looping**: För varje film i listan (`Model.Results`), skapar vyn en **movie card** som visar:
+
+### Hur den fungerar:
+
+* **HTML-struktur**: Vyn bygger en HTML-struktur för att visa varje film i en **movie card**. Varje kort innehåller information om filmen och en länk till dess detaljerade vy.
+* **Länk**: För varje film genereras en länk (`<a href="/movie/@id">View Details</a>`) som leder till detaljsidan för just den filmen.
+
+**Kodexempel (i `movies.cshtml`):**
+
+```html
+@model StarWarsResponse
+
+@if (Model.Results != null && Model.Results.Any())
+{
+    <div class="movies-container">
+        @foreach (var movie in Model.Results)
+        {
+            var id = movie.url?.Split("/", StringSplitOptions.RemoveEmptyEntries).Last();
+            <div class="movie-card">
+                <h2>@movie.Title</h2>
+                <p><strong>Director:</strong> @movie.Director</p>
+                <p><strong>Release:</strong> @movie.release_date</p>
+                <a href="/movie/@id">View Details</a>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <p>No movies found.</p>
+}
+```
